@@ -1,0 +1,6 @@
+{
+  "backbone": "vit_small_patch14_dinov2.lvd142m",
+  "epochs": 20,
+  "train_images": 1020,
+  "val_accuracy": 0.9902
+}
