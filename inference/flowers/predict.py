@@ -21,7 +21,8 @@ def main():
 
     classifier = FlowerClassifier()
     for path in expand(args.paths):
-        predictions = classifier.predict(Image.open(path), args.k)
+        with Image.open(path) as image:
+            predictions = classifier.predict(image, args.k)
         print(f"{path.name:<24}" + "  ".join(f"{p['label']} {p['score']:.1%}" for p in predictions))
 
 

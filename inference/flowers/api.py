@@ -3,7 +3,7 @@ from time import perf_counter
 from typing import Annotated
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
 
 from flowers.classes import CLASSES
 from flowers.model import FlowerClassifier
@@ -32,8 +32,9 @@ def info() -> dict:
 def predict(file: Annotated[UploadFile, File()], k: Annotated[int, Query(ge=1, le=len(CLASSES))] = 5) -> dict:
     try:
         image = Image.open(file.file)
-    except UnidentifiedImageError:
-        raise HTTPException(status_code=415, detail="File is not a supported image")
+        image.load()
+    except OSError:
+        raise HTTPException(status_code=415, detail="File is not a valid image") from None
     start = perf_counter()
     predictions = app.state.classifier.predict(image, k)
     return {"predictions": predictions, "latency_ms": round((perf_counter() - start) * 1000, 1)}
