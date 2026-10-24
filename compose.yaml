@@ -1,0 +1,67 @@
+name: flower-classifier
+
+x-hardened: &hardened
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: "3" }
+
+services:
+  inference:
+    <<: *hardened
+    build:
+      context: ./inference
+      target: serve
+    image: flower-inference:1.0
+    environment:
+      OMP_NUM_THREADS: 4
+    deploy:
+      resources:
+        limits: { cpus: "4", memory: 2g, pids: 256 }
+    networks: [backend]
+
+  gui:
+    <<: *hardened
+    build: ./gui
+    image: flower-gui:1.0
+    environment:
+      API_URL: http://inference:8000
+      SPACE_URL: ${SPACE_URL:-}
+    ports: ["127.0.0.1:7860:7860"]
+    depends_on:
+      inference: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 1g, pids: 256 }
+    networks: [backend, frontend]
+
+  trainer:
+    profiles: [train]
+    build:
+      context: ./inference
+      target: train
+    image: flower-trainer:1.0
+    environment:
+      EPOCHS: 20
+      OMP_NUM_THREADS: 6
+    shm_size: 2g
+    deploy:
+      resources:
+        limits: { cpus: "6", memory: 6g }
+    volumes:
+      - datasets:/data
+      - ./inference/artifacts:/app/artifacts
+    networks: [frontend]
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  datasets:
